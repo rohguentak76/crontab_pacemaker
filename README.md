@@ -9,8 +9,8 @@
 
 1. 패키지설치
 ```
-대상 장비 모두 패키
-yum install -y pcs pacemaker corosync
+대상 장비 모두 패키지 설치
+# yum install -y pcs pacemaker corosync
 ```
 
 2. cluster 설정
