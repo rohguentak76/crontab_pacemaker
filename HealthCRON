@@ -1,0 +1,147 @@
+#!/bin/sh
+#
+#
+# HealthCRON OCF RA. Does nothing but wait a few seconds, can be
+# configured to fail occassionally.
+#
+# Copyright (c) 2004 SUSE LINUX AG, Lars Marowsky-Brée
+#                    All Rights Reserved.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of version 2 of the GNU General Public License as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it would be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# Further, this software is distributed without any warranty that it is
+# free of the rightful claim of any third person regarding infringement
+# or the like.  Any license provided herein, whether implied or
+# otherwise, applies only to this software file.  Patent licenses, if
+# any, provided herein do not apply to combinations of this program with
+# other software, or any other product whatsoever.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write the Free Software Foundation,
+# Inc., 59 Temple Place - Suite 330, Boston MA 02111-1307, USA.
+#
+
+#######################################################################
+# Initialization:
+
+: ${OCF_FUNCTIONS=${OCF_ROOT}/resource.d/heartbeat/.ocf-shellfuncs}
+. ${OCF_FUNCTIONS}
+: ${__OCF_ACTION=$1}
+RUNNING_FILE=/tmp/.running_cron_monitoring
+#######################################################################
+
+meta_data() {
+    cat <<END
+<?xml version="1.0"?>
+<!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+<resource-agent name="HealthCRON" version="1.0">
+<version>1.0</version>
+
+<longdesc lang="en">
+This is a HealthCRON Resource Agent. It does absolutely nothing except 
+keep track of whether its running or not.
+Its purpose in life is for testing and to serve as a template for RA writers.
+
+NB: Please pay attention to the timeouts specified in the actions
+section below. They should be meaningful for the kind of resource
+the agent manages. They should be the minimum advised timeouts,
+but they shouldn't/cannot cover _all_ possible resource
+instances. So, try to be neither overly generous nor too stingy,
+but moderate. The minimum timeouts should never be below 10 seconds.
+</longdesc>
+<shortdesc lang="en">Example stateless resource agent</shortdesc>
+
+<parameters>
+<parameter name="dampen" unique="0">
+<longdesc lang="en">
+The time to wait (dampening) further changes occur
+</longdesc>
+<shortdesc lang="en">Dampening interval</shortdesc>
+<content type="integer" default="5s"/>
+</parameter>
+<parameter name="name" unique="0">
+<longdesc lang="en">
+The name of the attributes to set.  This is the name to be used in the constraints.
+</longdesc>
+<shortdesc lang="en">Attribute name</shortdesc>
+<content type="string" default="cronh"/>
+</parameter>
+</parameters>
+
+<actions>
+<action name="start"        timeout="20" />
+<action name="stop"         timeout="20" />
+<action name="monitor"      timeout="20" interval="10" depth="0"/>
+<action name="validate-all" timeout="20" />
+<action name="meta-data"    timeout="5" />
+</actions>
+</resource-agent>
+END
+ return $OCF_SUCCESS
+}
+
+#######################################################################
+
+healthCRON_usage() {
+    cat <<END
+usage: $0 {start|stop|monitor|validate-all|meta-data}
+
+Expects to have a fully populated OCF RA-compliant environment set.
+END
+}
+
+healthCRON_start() {
+    touch "${RUNNING_FILE}"
+    return $OCF_SUCCESS
+}
+
+healthCRON_stop() {
+    rm -f "${RUNNING_FILE}"
+    attrd_updater -D -n $OCF_RESKEY_name -d $OCF_RESKEY_dampen -q
+    return $OCF_SUCCESS
+}
+
+healthCRON_monitor() {
+    if [ -f ${RUNNING_FILE} ];
+    then 
+	score=`ps -ef |grep crond | grep -v grep | wc -l`
+	attrd_updater -n $OCF_RESKEY_name -v $score -d $OCF_RESKEY_dampen -q
+	rc=$?
+	if [ $rc -ne 0 ]; then
+             ocf_log warn "Could not update $OCF_RESKEY_name = $score: rc=$rc"
+	     return $rc
+        fi
+	if [ $score -eq 0 ]; then
+                 ocf_log err "CROND is dead please check"
+        fi
+    fi   
+}
+
+healthCRON_validate() {
+    return $OCF_SUCCESS
+}
+
+
+case $__OCF_ACTION in
+meta-data)      meta_data
+                exit $OCF_SUCCESS
+                ;;
+start)          healthCRON_start;;
+stop)           healthCRON_stop;;
+monitor)        healthCRON_monitor;;
+validate-all)   healthCRON_validate;;
+usage|help)     healthCRON_usage
+                exit $OCF_SUCCESS
+                ;;
+*)              healthCRON_usage
+                exit $OCF_ERR_UNIMPLEMENTED
+                ;;
+esac
+
+exit $rc
