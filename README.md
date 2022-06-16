@@ -65,3 +65,26 @@ Restarting pcsd on the nodes in order to reload the certificates...
 client1: Success
 client2: Success
 ```
+
+```
+[root@client1 vagrant]# pcs status
+Cluster name: crontab-cluster
+Stack: corosync
+Current DC: client2 (version 1.1.23-1.el7_9.1-9acf116022) - partition with quorum
+Last updated: Thu Jun 16 06:42:58 2022
+Last change: Thu Jun 16 06:42:54 2022 by root via cibadmin on client1
+
+2 nodes configured
+0 resource instances configured
+
+Online: [ client1 client2 ]
+
+No resources
+
+
+Daemon Status:
+  corosync: active/enabled
+  pacemaker: active/enabled
+  pcsd: active/enabled
+
+```
